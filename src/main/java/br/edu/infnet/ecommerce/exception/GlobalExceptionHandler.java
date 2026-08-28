@@ -1,5 +1,9 @@
-package br.edu.infnet.ecommerce.exception;
+package br.edu.infnet.ecommerce.shared;
 
+import br.edu.infnet.ecommerce.estoque.domain.EstoqueInsuficienteException;
+import br.edu.infnet.ecommerce.exception.ApiError;
+import br.edu.infnet.ecommerce.exception.RecursoNaoEncontradoException;
+import br.edu.infnet.ecommerce.pagamento.domain.PagamentoRecusadoException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
