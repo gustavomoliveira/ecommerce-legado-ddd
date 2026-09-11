@@ -1,10 +1,12 @@
 package br.edu.infnet.ecommerce.pedido.domain;
 
+import br.edu.infnet.ecommerce.shared.domain.DomainEvent;
 import br.edu.infnet.ecommerce.usuario.domain.UsuarioId;
 import br.edu.infnet.ecommerce.usuario.domain.UsuarioIdConverter;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -33,6 +35,8 @@ public class Pedido {
     @Column(nullable = false)
     private LocalDateTime criadoEm;
 
+    private final transient List<DomainEvent> eventosPendentes = new ArrayList<>();
+
     protected Pedido() {
     }
 
@@ -59,6 +63,15 @@ public class Pedido {
 
     public void confirmarPagamento() {
         this.status = StatusPedido.PAGO;
+        eventosPendentes.add(PedidoPagoEvent.criar(getId(), usuarioId, valorTotal));
+    }
+
+    public List<DomainEvent> getEventosPendentes() {
+        return List.copyOf(eventosPendentes);
+    }
+
+    public void limparEventos() {
+        eventosPendentes.clear();
     }
 
     public void recusarPagamento() {

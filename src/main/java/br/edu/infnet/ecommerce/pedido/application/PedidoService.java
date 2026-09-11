@@ -7,7 +7,9 @@ import br.edu.infnet.ecommerce.pedido.infrastructure.request.CriarPedidoRequest;
 import br.edu.infnet.ecommerce.pedido.infrastructure.request.ItemPedidoRequest;
 import br.edu.infnet.ecommerce.produto.domain.ProdutoId;
 import br.edu.infnet.ecommerce.exception.RecursoNaoEncontradoException;
+import br.edu.infnet.ecommerce.shared.domain.PublicadorDeEventosPort;
 import br.edu.infnet.ecommerce.usuario.domain.UsuarioId;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,19 +23,22 @@ public class PedidoService {
     private final ConsultaProdutoPort consultaProdutoPort;
     private final GerenciamentoEstoquePort gerenciamentoEstoquePort;
     private final ProcessamentoPagamentoPort processamentoPagamentoPort;
+    private final PublicadorDeEventosPort publicadorDeEventosPort;
 
     public PedidoService(
             PedidoRepository pedidoRepository,
             ConsultaUsuarioPort consultaUsuarioPort,
             ConsultaProdutoPort consultaProdutoPort,
             GerenciamentoEstoquePort gerenciamentoEstoquePort,
-            ProcessamentoPagamentoPort processamentoPagamentoPort
+            ProcessamentoPagamentoPort processamentoPagamentoPort,
+            PublicadorDeEventosPort publicadorDeEventosPort
     ) {
         this.pedidoRepository = pedidoRepository;
         this.consultaUsuarioPort = consultaUsuarioPort;
         this.consultaProdutoPort = consultaProdutoPort;
         this.gerenciamentoEstoquePort = gerenciamentoEstoquePort;
         this.processamentoPagamentoPort = processamentoPagamentoPort;
+        this.publicadorDeEventosPort = publicadorDeEventosPort;
     }
 
     public List<Pedido> listar() {
@@ -75,14 +80,24 @@ public class PedidoService {
                 request.numeroCartao()
         );
 
+        Pedido pedidoFinal;
+
         if (!resultado.aprovado()) {
             pedidoSalvo.recusarPagamento();
-            pedidoRepository.save(pedidoSalvo);
+            pedidoFinal = pedidoRepository.save(pedidoSalvo);
+            publicarEventos(pedidoFinal);
             throw new PagamentoRecusadoException("Pagamento recusado: " + resultado.motivo());
         }
 
         pedidoSalvo.confirmarPagamento();
-        return pedidoRepository.save(pedidoSalvo);
+        pedidoFinal = pedidoRepository.save(pedidoSalvo);
+        publicarEventos(pedidoFinal);
+        return pedidoFinal;
+    }
+
+    private void publicarEventos(Pedido pedido) {
+        publicadorDeEventosPort.publicar(pedido.getEventosPendentes());
+        pedido.limparEventos();
     }
 
     private ItemPedido montarItem(ItemPedidoRequest itemRequest) {
